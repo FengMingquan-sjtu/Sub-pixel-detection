@@ -5,14 +5,14 @@ import torch
 import os
 
 class DriverDataset(data.Dataset):
-    def __init__(self, LR_root,GT_root,HR_height,HR_width,scale_factor):
+    def __init__(self, LR_root,GT_root,scale_factor):
         
         self.LR_root=LR_root
         self.GT_root=GT_root
         imgs_name = self._fileList(LR_root)
         self.imgs_name=imgs_name
-        self.LR_transforms=self.default_transform(HR_height//scale_factor,HR_width//scale_factor)
-        self.HR_transforms=self.default_transform(HR_height,HR_width)
+        self.LR_transforms=self.default_transform()
+        self.HR_transforms=self.default_transform()
         
     
     def __getitem__(self, index):
@@ -38,9 +38,8 @@ class DriverDataset(data.Dataset):
                     ret_list.append(name)
         return ret_list
 
-    def default_transform(self,H,W):
+    def default_transform(self):
         transforms = T.Compose([
-                T.CenterCrop(size=(H,W)),
                 T.ToTensor(), 
                 ])
         return transforms
