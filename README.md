@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ### 2.2. prepare datasets
 
-Put train HR(High-Resolution) images in `./data/train_input`, put validation HR images in `./data/valid_input`, and (optionally) put testing HR images in `./data/test_input`.   We already put some demo iamges in these folders.
+Put train HR(High-Resolution) images in `./data/intput/train_input`, put validation HR images in `./data/input/valid_input`, and (optionally) put testing HR images in `./data/input/test_input`.   We already put some demo iamges in these folders.
 
 ### 2.3. train and test
 
@@ -34,7 +34,7 @@ python main.py -h
 
 ### 2.4. Output
 
-Output of test is in `./data/test_output`.
+Output of test is in `./data/output/test_output`.
 
 ## 3.remarks
 
@@ -44,7 +44,7 @@ We downloaded DIV2K dataset from https://github.com/xinntao/BasicSR/wiki/Prepare
 
 ### 3.2. Image type
 
-By default, only `.png` images are valid input. If other type of images need to be supported, please modify the following code in `./utils/dataPrepare.py` at Line9.
+By default, only `.png` images are valid input. If other type of images need to be supported, please modify the following code in `./utils/dataPrepare.py` at Line14.
 
 ```
 if name.endswith(".png"): 

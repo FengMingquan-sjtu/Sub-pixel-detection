@@ -13,7 +13,7 @@ import torch
 #my modules
 from utils.trainer import Trainer,Tester
 from utils.driverDataset import DriverDataset
-from utils.dataPrepare import DataPrepare,cv2_interestDetect
+from utils.dataPrepare import DataPrepare,cv2_interestDetect,HR_H,HR_W
 from utils.option import getArgs
 from models.model import SPResNet
 
@@ -36,20 +36,28 @@ isPrepare=args.isPrepare
 isSummary=args.isSummary
 
 
-HR_height=1200
-HR_width=2000
+
 
 data_root="data"
-valid_input_HR_path=os.path.join(data_root,"valid_input")
-valid_GT_path=os.path.join(data_root,"valid_GT")
-valid_LR_path=os.path.join(data_root,"valid_LR")
-train_input_HR_path=os.path.join(data_root,"train_input")
-train_GT_path=os.path.join(data_root,"train_GT")
-train_LR_path=os.path.join(data_root,"train_LR")
-test_input_HR_path=os.path.join(data_root,"test_input")
-test_GT_path=os.path.join(data_root,"test_GT")
-test_LR_path=os.path.join(data_root,"test_LR")
-test_output_path=os.path.join(data_root,"test_output")
+input_root="input"
+temp_root="temp"
+output_root="output"
+
+valid_input_HR_path=os.path.join(data_root,input_root,"valid_input")
+valid_processed_HR_path=os.path.join(data_root,temp_root,"valid_processed")
+valid_GT_path=os.path.join(data_root,temp_root,"valid_GT")
+valid_LR_path=os.path.join(data_root,temp_root,"valid_LR")
+
+train_input_HR_path=os.path.join(data_root,input_root,"train_input")
+train_processed_HR_path=os.path.join(data_root,temp_root,"train_processed")
+train_GT_path=os.path.join(data_root,temp_root,"train_GT")
+train_LR_path=os.path.join(data_root,temp_root,"train_LR")
+
+test_input_HR_path=os.path.join(data_root,input_root,"test_input")
+test_processed_HR_path=os.path.join(data_root,temp_root,"test_processed")
+test_GT_path=os.path.join(data_root,temp_root,"test_GT")
+test_LR_path=os.path.join(data_root,temp_root,"test_LR")
+test_output_path=os.path.join(data_root,output_root,"test_output")
 
 log_root="logs"
 log_path=os.path.join("logs",experiment_name)
@@ -58,21 +66,19 @@ model_load_path=os.path.join(model_save_path,"epoch%d.pkl"%load_epoch_pkl)
 
 # -----end set parameters----------
 
-def data_preparation(input_HR_path,GT_path,LR_path):
+def data_preparation(input_HR_path,processed_HR_path,GT_path,LR_path):
     interestPointsDetect=cv2_interestDetect
-    data=DataPrepare(input_HR_path,GT_path,LR_path,scale_factor,interestPointsDetect,max_corners)
+    data=DataPrepare(input_HR_path,processed_HR_path,GT_path,LR_path,scale_factor,interestPointsDetect,max_corners)
     data.dataPrepare()
 
 
 def getDataLoader(LR_path,GT_path):
-    data = DriverDataset(LR_path,GT_path,HR_height,HR_width,scale_factor)
+    data = DriverDataset(LR_path,GT_path,scale_factor)
     dataloader = DataLoader(dataset=data,shuffle=True, batch_size=batch_size)
     return dataloader
 
 def model_summary(model):
-    in_H=HR_height//scale_factor
-    in_W=HR_width//scale_factor 
-    summary(model, input_size=(3,in_H,in_W))
+    summary(model, input_size=(3,HR_H,HR_W))
 
 def getModel():
     if model_name=="SPResNet":
@@ -115,10 +121,10 @@ def start_test():
 
 if __name__ == '__main__':
     if isPrepare:
-        data_preparation(valid_input_HR_path,valid_GT_path,valid_LR_path)
-        data_preparation(train_input_HR_path,train_GT_path,train_LR_path)
+        data_preparation(valid_input_HR_path,valid_processed_HR_path,valid_GT_path,valid_LR_path)
+        data_preparation(train_input_HR_path,train_processed_HR_path,train_GT_path,train_LR_path)
     if isPrepare and isTest:
-        data_preparation(test_input_HR_path,test_GT_path,test_LR_path)
+        data_preparation(test_input_HR_path,test_processed_HR_path,test_GT_path,test_LR_path)
     
     if isSummary:
         model_summary(getModel())
