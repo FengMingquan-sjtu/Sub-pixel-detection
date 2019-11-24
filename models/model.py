@@ -47,10 +47,10 @@ class UpSample(nn.Module):
 
 
 class SPResNet(nn.Module):
-    def __init__(self, scale_factor,feature_size=5,num_ResBlock=1,kernel_size=3):
+    def __init__(self, scale_factor,in_channels=3,out_channels=1,feature_size=5,num_ResBlock=1,kernel_size=3):
         super(SPResNet, self).__init__()
-        in_channels=3 #input is 3-channel color img
-        out_channels=1 #input is 1-channel gray img
+        #in_channels=3 default input is 3-channel color img
+        #out_channels=1 default output is 1-channel gray img
         
         self.resBlocks=nn.Sequential(*[ResBlock(in_channels,feature_size,kernel_size) for _ in range(num_ResBlock)])
         self.upsample=nn.Sequential(

@@ -69,26 +69,42 @@ class Trainer():
 
 
 class Tester():
-    def __init__(self,model):
+    def __init__(self,model,test_dataloader,test_output_path,detectors_order,loss_func):
         self.model=model
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model=model.to(self.device)
+        self.test_dataloader=test_dataloader
+        self.test_output_path=test_output_path
+        self.detectors_order=detectors_order
+        self.loss_func=loss_func
         self.toPIL=T.Compose([T.ToPILImage(),])
+
+        self.test_output_paths=[os.path.join(test_output_path,d) for d in self.detectors_order]
+        for p in self.test_output_paths:
+            if not os.path.exists(p):
+                os.makedirs(p)
+
         
 
-    def test(self,test_dataloader,test_output_path):
-        if not os.path.exists(test_output_path):
-            os.makedirs(test_output_path)
+    def test(self):
 
         self.model.eval()
         with torch.no_grad():
-            for lr,name in test_dataloader:
+            total_loss=0
+            for lr,gt,name in self.test_dataloader:
                 lr=lr.to(self.device)
                 output=self.model(lr)
-                for idx,img in enumerate(output.cpu().data):
-                    path=os.path.join(test_output_path,name[idx])
-                    img=self.toPIL(img)
-                    img.save(path)
+                loss=self.loss_func(output,gt)
+                total_loss=loss.item() * gt.size(0)
+                for img_idx,img in enumerate(output.cpu().data):
+                    n=name[img_idx]
+                    for p_idx,p in enumerate(self.test_output_paths):
+                        p=os.path.join(p,n)
+                        tmp_img=self.toPIL(img[p_idx])
+                        tmp_img.save(p)
+            avg_loss=total_loss/len(self.test_dataloader)
+            print("test average loss =",avg_loss)
+
 
 
 
