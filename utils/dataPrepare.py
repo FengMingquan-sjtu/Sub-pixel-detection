@@ -98,9 +98,9 @@ class DataPrepare:
         img=Image.open(path)
         w,h=img.size
         ret_list=list()
-        for upper in range(0, h-HR_H ,HR_H ):
+        for upper in range(0, h-HR_H ,int(HR_H/2) ):
             lower=upper+HR_H
-            for left in range(0, w-HR_W, HR_W):
+            for left in range(0, w-HR_W, int(HR_W/2) ):
                 right=left+HR_W
                 box=(left, upper, right, lower)
                 croped=img.crop(box)
@@ -112,7 +112,7 @@ class DataPrepare:
         transforms = T.Compose([
             T.RandomHorizontalFlip(), #horizontal flip  with p=0.5
             T.RandomVerticalFlip(), #Vertical flip with p=0.5
-            #T.RandomRotation(10), #random rotate in (-10,10),may lead to furry edge
+            T.RandomRotation(10), #random rotate in (-10,10),may lead to furry edge
             ])
         return transforms(img)
 
@@ -146,7 +146,7 @@ def cv2_circlesDetect(gray):
     return matrix_circles
 
 def cv2_edgeDetect(gray):
-    matrix_edges = cv2.Canny(gray,150,220)
+    matrix_edges = cv2.Canny(gray,100,200)
     return matrix_edges
 
 def get_detectors(detector_num):

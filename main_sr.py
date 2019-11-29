@@ -12,7 +12,7 @@ import torch
 
 #my modules
 from utils.trainer import Trainer,Tester
-from utils.driverDataset import DriverDataset
+from utils.driverDatasetSR import DriverDatasetSR
 from utils.dataPrepare import DataPrepare,HR_H,HR_W,get_detectors
 from utils.outputVisualize import OutputVisualize
 from utils.option import getArgs
@@ -50,20 +50,20 @@ output_root="output"
 
 valid_input_HR_path=os.path.join(data_root,input_root,"valid_input")
 valid_processed_HR_path=os.path.join(data_root,temp_root,"valid_processed_input")
-valid_GT_npy_path=os.path.join(data_root,temp_root,"valid_GT","npy")
-valid_GT_img_path=os.path.join(data_root,temp_root,"valid_GT","img")
+#valid_GT_npy_path=os.path.join(data_root,temp_root,"valid_GT","npy")
+#valid_GT_img_path=os.path.join(data_root,temp_root,"valid_GT","img")
 valid_LR_path=os.path.join(data_root,temp_root,"valid_LR")
 
 train_input_HR_path=os.path.join(data_root,input_root,"train_input")
 train_processed_HR_path=os.path.join(data_root,temp_root,"train_processed_input")
-train_GT_npy_path=os.path.join(data_root,temp_root,"train_GT","npy")
-train_GT_img_path=os.path.join(data_root,temp_root,"train_GT","img")
+#train_GT_npy_path=os.path.join(data_root,temp_root,"train_GT","npy")
+#train_GT_img_path=os.path.join(data_root,temp_root,"train_GT","img")
 train_LR_path=os.path.join(data_root,temp_root,"train_LR")
 
 test_input_HR_path=os.path.join(data_root,input_root,"test_input")
 test_processed_HR_path=os.path.join(data_root,temp_root,"test_processed_input")
-test_GT_npy_path=os.path.join(data_root,temp_root,"test_GT","npy")
-test_GT_img_path=os.path.join(data_root,temp_root,"test_GT","img")
+#test_GT_npy_path=os.path.join(data_root,temp_root,"test_GT","npy")
+#test_GT_img_path=os.path.join(data_root,temp_root,"test_GT","img")
 test_LR_path=os.path.join(data_root,temp_root,"test_LR")
 test_output_path=os.path.join(data_root,output_root,"test_output")
 
@@ -78,13 +78,13 @@ model_load_path=os.path.join(model_save_path,"epoch%d.pkl"%load_epoch_pkl)
 
 # -----end set parameters----------
 
-def data_preparation(input_HR_path,processed_HR_path,GT_img_path,GT_npy_path,LR_path):
-    data=DataPrepare(input_HR_path,processed_HR_path,GT_img_path,GT_npy_path,LR_path,scale_factor,detectors_order,detectors)
-    data.dataPrepare()
+#def data_preparation(input_HR_path,processed_HR_path,GT_img_path,GT_npy_path,LR_path):
+#    data=DataPrepare(input_HR_path,processed_HR_path,GT_img_path,GT_npy_path,LR_path,scale_factor,detectors_order,detectors)
+#    data.dataPrepare()
 
 
-def getDataLoader(LR_path,GT_npy_path,isTrain):
-    data = DriverDataset(LR_path,GT_npy_path,scale_factor,isTrain)
+def getDataLoader(LR_path,GT_path,isTrain):
+    data = DriverDatasetSR(LR_path,GT_path,scale_factor,isTrain)
     dataloader = DataLoader(dataset=data,shuffle=True, batch_size=batch_size)
     return dataloader
 
@@ -93,14 +93,14 @@ def model_summary(model):
 
 def getModel():
     if model_name=="SPResNet":
-        return SPResNet(scale_factor=scale_factor,out_channels=detector_num,num_ResBlock=num_ResBlock,feature_size=feature_size)
+        return SPResNet(scale_factor=scale_factor,out_channels=3,num_ResBlock=num_ResBlock,feature_size=feature_size)
     else:
         raise NotImplementedError("model %s is not implemented"%model_name)
 
 
 def start_train():
-    train_dataloader=getDataLoader(train_LR_path,train_GT_npy_path,isTrain=True)
-    valid_dataloader=getDataLoader(valid_LR_path,valid_GT_npy_path,isTrain=True)
+    train_dataloader=getDataLoader(train_LR_path,train_processed_HR_path,isTrain=True)
+    valid_dataloader=getDataLoader(valid_LR_path,valid_processed_HR_path,isTrain=True)
     model=getModel()
     loss_func = F.mse_loss
     optimizer = optim.Adam(model.parameters())
@@ -122,18 +122,18 @@ def loadModel():
 def start_test():
     print("start testing.")
     test_model=loadModel()
-    test_dataloader=getDataLoader(test_LR_path,test_GT_npy_path,isTrain=False) # "None" means GT imgs are invisible to tester
+    test_dataloader=getDataLoader(test_LR_path,test_processed_HR_path,isTrain=False) 
     loss_func = F.mse_loss
     tester=Tester(test_model,test_dataloader,test_output_path,detectors_order,loss_func)
     
     tester.test()
     print("finish testing.")
 
-def start_visualize():
-    b=Baseline(test_LR_path,baseline_output_path,scale_factor,detectors_order)
-    b.detect()
-    o=OutputVisualize(test_processed_HR_path,test_GT_img_path,test_output_path,baseline_output_path,visualize_output_path,threshold,detectors_order)
-    o.visualize()
+#def start_visualize():
+#    b=Baseline(test_LR_path,baseline_output_path,scale_factor,detectors_order)
+#    b.detect()
+#    o=OutputVisualize(test_processed_HR_path,test_GT_img_path,test_output_path,baseline_output_path,visualize_output_path,threshold,detectors_order)
+#    o.visualize()
 
 
 
@@ -156,8 +156,7 @@ if __name__ == '__main__':
     if isTest:
         start_test()
 
-    if isVisualize:
-        start_visualize()
+    
 
 
     print("tensorboard cmd= tensorboard --logdir=%s"%log_root)

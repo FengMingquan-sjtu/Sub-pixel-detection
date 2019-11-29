@@ -57,7 +57,10 @@ class Trainer():
                 epoch_loss=epoch_loss_sum/self.data_size[phase]
 
                 #output and log statistics
-                print("epoch=%d,phase=%s,loss=%f"%(epoch+1,phase,epoch_loss))
+                info="epoch=%d,phase=%s,loss=%f\n"%(epoch+1,phase,epoch_loss)
+                print(info)
+                with open("trainer_log.txt",'a') as f:
+                    f.write(info)
                 self.writer.add_scalar('%s_loss'%phase,epoch_loss,(epoch+1)*self.data_size['train'])
             self._save_model(epoch=epoch+1)
         self.writer.close()
@@ -93,9 +96,10 @@ class Tester():
             total_loss=0
             for lr,gt,name in self.test_dataloader:
                 lr=lr.to(self.device)
+                gt=gt.to(self.device)
                 output=self.model(lr)
                 loss=self.loss_func(output,gt)
-                total_loss=loss.item() * gt.size(0)
+                total_loss+=loss.item() * gt.size(0)
                 for img_idx,img in enumerate(output.cpu().data):
                     n=name[img_idx]
                     for p_idx,p in enumerate(self.test_output_paths):
