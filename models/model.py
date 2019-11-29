@@ -51,14 +51,12 @@ class SPResNet(nn.Module):
         super(SPResNet, self).__init__()
         #in_channels=3 default input is 3-channel color img
         #out_channels=1 default output is 1-channel gray img
-        
-        self.resBlocks=nn.Sequential(*[ResBlock(in_channels,feature_size,kernel_size) for _ in range(num_ResBlock)])
-        self.upsample=nn.Sequential(
-            UpSample(feature_size,feature_size,scale_factor,kernel_size),
-            nn.Conv2d(feature_size, out_channels, kernel_size, padding=(kernel_size-1)//2),
-            )
+        self.resBlocks1=nn.Sequential(ResBlock(in_channels,feature_size),*[ResBlock(feature_size,feature_size,kernel_size) for _ in range(num_ResBlock-1)])
+        self.upsample=UpSample(feature_size,feature_size,scale_factor,kernel_size)
+        self.resBlocks2=ResBlock(feature_size,out_channels)
     def forward(self,x):
-        x=self.resBlocks(x)
+        x=self.resBlocks1(x)
         x=self.upsample(x)
+        x=self.resBlocks2(x)
         return x
         
