@@ -8,9 +8,9 @@ from utils.dataPrepare import fileList,GRAY_MAX
 
 ## base_output_path is the baseline model's output folder
 class OutputVisualize:
-    def __init__(self,test_input_path,test_GT_path,test_output_path,base_output_path, processed_output_path,threshold,detectors_order):
-        self.test_input_path=test_input_path
-        self.test_GT_paths=[os.path.join(test_GT_path,d) for d in detectors_order]
+    def __init__(self,test_GT_root,test_output_path,base_output_path, processed_output_path,threshold,detectors_order):
+        self.test_GT_origin_path=os.path.join(test_GT_root,"img","origin")
+        self.test_GT_paths=[os.path.join(test_GT_root,"img",d) for d in detectors_order]
         self.test_output_paths=[os.path.join(test_output_path,d) for d in detectors_order]
         self.base_output_paths=[os.path.join(base_output_path,d) for d in detectors_order]
         self.processed_output_paths=[os.path.join(processed_output_path,d) for d in detectors_order]
@@ -25,7 +25,7 @@ class OutputVisualize:
     #draw points on HR imgs (since we can not draw sub-pixel points on LR imgs)
     def visualize(self):
         print("start visualize")
-        path_and_name=fileList(self.test_input_path)
+        path_and_name=fileList(self.test_GT_origin_path)
 
         for path,name in path_and_name:
             input_path=path
@@ -40,8 +40,8 @@ class OutputVisualize:
                 GT_img=cv2.imread(GT_path,cv2.IMREAD_GRAYSCALE)#gray
                 test_img=cv2.imread(test_path,cv2.IMREAD_GRAYSCALE)
                 baseline_img=cv2.imread(baseline_path,cv2.IMREAD_GRAYSCALE)
-                img_list=[GT_img,test_img,baseline_img]
-                color_list=[[0,0,255],[0,255,0],[225,0,0]]#R=GT,G=TEST,B=BASE
+                img_list=[GT_img,baseline_img,test_img]
+                color_list=[[0,0,255],[225,0,0],[0,255,0]]#Red=GT,Blue=BASE,Green=TEST
             
                 is_limit=self.detectors_order[i]=="corners"#corners are limited
                 for idx_img in range(len(img_list)):

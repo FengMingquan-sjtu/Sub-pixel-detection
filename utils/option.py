@@ -20,7 +20,7 @@ def getArgs():
 
     parser.add_argument("-tr",'--isTrain', type=int, default=1,help='whether to train, 1 for Yes, 0 for No')
     parser.add_argument("-ts",'--isTest', type=int, default=1,help='whether to test, 1 for Yes, 0 for No')
-    parser.add_argument("-vs",'--isVisualize', type=int, default=1,help='whether to test, 1 for Yes, 0 for No')
+    parser.add_argument("-vs",'--isVisualize', type=int, default=0,help='whether to visualize, 1 for Yes, 0 for No')
     parser.add_argument("-p",'--isPrepare', type=int, default=1,help='whether to do data preparation, 1 for Yes, 0 for No')
     parser.add_argument("-s",'--isSummary', type=int, default=0,help='whether to do model summary, 1 for Yes, 0 for No')
 

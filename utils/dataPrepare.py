@@ -7,6 +7,13 @@ from PIL import Image
 GRAY_MAX=255
 HR_H=640
 HR_W=640
+ratio=1.23
+crop_H=int(ratio*HR_H)
+crop_W=int(ratio*HR_W)
+stride=0.8
+stride_H=int(stride*HR_H)
+stride_W=int(stride*HR_W)
+
 def fileList(path):
     ret_list=[]
     for root, dirs, files in os.walk(path):
@@ -16,34 +23,44 @@ def fileList(path):
     return ret_list
 
 class DataPrepare:
-    def __init__(self,input_HR_path,processed_HR_path,output_GT_img_path,output_GT_npy_path,output_LR_path,scale_factor,detectors_order,detectors):
+    def __init__(self,input_HR_path,output_GT_root,output_LR_root,scale_factor,detectors_order,detectors,need_visualize=False):
         self.input_HR_path=input_HR_path
-        self.processed_HR_path=processed_HR_path
-        self.output_LR_path=output_LR_path
-        self.output_GT_npy_path=output_GT_npy_path
+        self.output_LR_root=output_LR_root
+        self.output_GT_root=output_GT_root
         self.detectors=detectors
         self.detectors_order=detectors_order
         self.scale_factor=scale_factor
+        self.need_visualize=need_visualize
+
+        self.transform=self.default_transform()
+
+        self.LR_size=(int(HR_W/self.scale_factor),int(HR_H/self.scale_factor))
 
         if not os.path.exists(input_HR_path):
             raise IOError("input_HR_path= %s not exists"%input_HR_path)
-        if not os.path.exists(processed_HR_path):
-            os.makedirs(processed_HR_path)
-
-        if output_GT_img_path:
-            self.output_GT_img_paths=[os.path.join(output_GT_img_path,d) for d in detectors_order]
-            for p in self.output_GT_img_paths:
-                if not os.path.exists(p):
-                    os.makedirs(p)
-        else:
-            self.output_GT_img_paths=[] # no need for img output
-
-        if not os.path.exists(output_GT_npy_path):
-            os.makedirs(output_GT_npy_path)
 
 
-        if not os.path.exists(output_LR_path):
-            os.makedirs(output_LR_path)
+
+        self.output_GT_img_paths=[os.path.join(output_GT_root,"img",d) for d in detectors_order]
+        self.output_GT_img_paths.append(os.path.join(output_GT_root,"img","origin"))
+        for p in self.output_GT_img_paths:
+            if not os.path.exists(p):
+                os.makedirs(p)
+        self.output_LR_img_paths=[os.path.join(output_LR_root,"img",d) for d in detectors_order]
+        self.output_LR_img_paths.append(os.path.join(output_LR_root,"img","origin"))
+        for p in self.output_LR_img_paths:
+            if not os.path.exists(p):
+                os.makedirs(p)
+
+
+        
+        self.output_GT_npy_path=os.path.join(output_GT_root,"npy")
+        self.output_LR_npy_path=os.path.join(output_LR_root,"npy")
+        
+        if not os.path.exists(self.output_LR_npy_path):
+            os.makedirs(self.output_LR_npy_path)
+        if not os.path.exists(self.output_GT_npy_path):
+            os.makedirs(self.output_GT_npy_path)
 
     
 
@@ -52,45 +69,59 @@ class DataPrepare:
     def dataPrepare(self):
         self.pre_process_spliting()
         #print("note: data is not split!")
-
-        processed_HR_files=fileList(self.processed_HR_path)
-
+        HR_origin_path=self.output_GT_img_paths[len(self.detectors_order)]# the path stores original HR
+        HR_origin_files=fileList(HR_origin_path)
         ## prepare GT
-        for path,name in processed_HR_files:
-            gray=cv2.imread(path,cv2.IMREAD_GRAYSCALE)
-            #print(gray,path)
-            GT=self.groundTruthGenerate(gray)
-            for idx,p in enumerate(self.output_GT_img_paths):
-                file=os.path.join(p,name)
-                cv2.imwrite(file,GT[idx])
-            p=self.output_GT_npy_path
-            p=os.path.join(p,name+".npy")
-            GT=np.array(GT)
-            #print(GT.shape)
-            np.save(p,GT)
+        self.process_and_save(HR_origin_files,self.output_GT_img_paths,self.output_GT_npy_path)
+
 
         ## prepare LR
-
-        for path,name in processed_HR_files:
+        LR_origin_path=self.output_LR_img_paths[len(self.detectors_order)]
+        for path,name in HR_origin_files:
             color=cv2.imread(path,cv2.IMREAD_COLOR)
-            HR_height, HR_width, _ =color.shape
-            LR_size=(int(HR_width/self.scale_factor),int(HR_height/self.scale_factor))
-            LR_img=cv2.resize(color,LR_size)
-            cv2.imwrite(os.path.join(self.output_LR_path,name),LR_img)
+            LR_img=cv2.resize(color,self.LR_size)
+            cv2.imwrite(os.path.join(LR_origin_path,name),LR_img)
+            #if self.need_visualize:
+        LR_origin_files=fileList(LR_origin_path)
+        self.process_and_save(LR_origin_files,self.output_LR_img_paths,self.output_LR_npy_path)
+                
 
-        print("Finish Preparation %d imgs"%(len(processed_HR_files)))
+        print("Finish Preparation %d imgs"%(len(HR_origin_files)))
+
+    def process_and_save(self,files,img_paths,npy_path):
+        
+        for path,name in files:
+            gray=cv2.imread(path,cv2.IMREAD_GRAYSCALE)
+            #print(gray,path)
+            GT=self.detect(gray)
+            if self.need_visualize:
+                for idx in range(len(self.detectors_order)):
+                    file=os.path.join(img_paths[idx],name)
+                    cv2.imwrite(file,GT[idx])
+
+            p=os.path.join(npy_path,name+".npy")
+            GT=np.array(GT)
+            #print(GT.shape)-->(C,H,W) here C==|detectors|==2
+            color=cv2.imread(path,cv2.IMREAD_COLOR)
+            #print(color.shape)--> (H,W,C);  Here C==|colors|==3
+            color=color.transpose((2,0,1))
+            #print(color.shape)#--> (C,H,W)
+            GT=np.concatenate((GT,color),axis=0)
+            #print(GT.shape) --> (C,H,W),C=5
+            np.save(p,GT)
 
     def pre_process_spliting(self):
         ##extract files
         input_HR_files=fileList(self.input_HR_path)
 
         ##pre-process(split into fixed size, random transform)
+        HR_origin_path=self.output_GT_img_paths[len(self.detectors_order)]# the path stores original HR
         for path,name in input_HR_files:
             splited=self.split(path)
             for cnt,img in enumerate(splited):
                 splited_name=str(cnt)+"_"+name
                 img=self.transform(img)
-                p=os.path.join(self.processed_HR_path,splited_name)
+                p=os.path.join(HR_origin_path,splited_name)
                 img.save(p)
         print("pre-process spliting finished")
 
@@ -98,26 +129,28 @@ class DataPrepare:
         img=Image.open(path)
         w,h=img.size
         ret_list=list()
-        for upper in range(0, h-HR_H ,int(HR_H/2) ):
-            lower=upper+HR_H
-            for left in range(0, w-HR_W, int(HR_W/2) ):
-                right=left+HR_W
+        
+        for upper in range(0, h-crop_H ,stride_H):
+            lower=upper+crop_H
+            for left in range(0, w-crop_W, stride_W):
+                right=left+crop_W
                 box=(left, upper, right, lower)
                 croped=img.crop(box)
                 ret_list.append(croped)
         return ret_list
 
 
-    def transform(self,img):
+    def default_transform(self):
         transforms = T.Compose([
+            T.RandomRotation(10), #random rotate in (-10,10),may lead to furry edge
+            T.CenterCrop((HR_H,HR_W)),
             T.RandomHorizontalFlip(), #horizontal flip  with p=0.5
             T.RandomVerticalFlip(), #Vertical flip with p=0.5
-            T.RandomRotation(10), #random rotate in (-10,10),may lead to furry edge
             ])
-        return transforms(img)
+        return transforms
 
-    def groundTruthGenerate(self,HR_img):
-        return [self.detectors[d](HR_img) for d in self.detectors_order]
+    def detect(self,img):
+        return [self.detectors[d](img) for d in self.detectors_order]
 
 
 
@@ -157,16 +190,14 @@ def get_detectors(detector_num):
 
 if __name__ == '__main__':
     input_HR_path="../data/input/test_input"
-    processed_HR_path='../data/temp/test_processed_input'
-    output_GT_img_path="../data/temp/test_GT/img"
-    output_GT_npy_path="../data/temp/test_GT/npy"
-    output_LR_path="../data/temp/test_LR"
+    output_GT_root="../data/temp/test_GT"
+    output_LR_root="../data/temp/test_LR"
     scale_factor=2
     detector_num=2
     detectors_order,detectors=get_detectors(detector_num)
     
-    
-    data=DataPrepare(input_HR_path,processed_HR_path,output_GT_img_path,output_GT_npy_path,output_LR_path,scale_factor,detectors_order,detectors)
+    need_visualize=True
+    data=DataPrepare(input_HR_path,output_GT_root,output_LR_root,scale_factor,detectors_order,detectors,need_visualize)
     data.dataPrepare()
 
 

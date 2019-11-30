@@ -6,39 +6,41 @@ import numpy as np
 import os
 
 class DriverDataset(data.Dataset):
-    def __init__(self, LR_root,GT_root,scale_factor,isTrain):
+    def __init__(self, LR_npy_path,GT_npy_path,scale_factor,isTrain):
         
-        self.LR_root=LR_root
-        self.GT_root=GT_root
+        self.LR_npy_path=LR_npy_path
+        self.GT_npy_path=GT_npy_path
         self.isTrain=isTrain
-        imgs_name = self._fileList(LR_root)
-        self.imgs_name=imgs_name
-        self.LR_transforms=self.get_default_img_transform()
+        self.imgs_name=self._fileList_npy(LR_npy_path)
+        self.LR_transforms=self.get_default_npy_transform()
         self.GT_transforms=self.get_default_npy_transform()
         
     
     def __getitem__(self, index):
         name=  self.imgs_name[index]
-        lr_path=os.path.join(self.LR_root, name)
-        lr = self.LR_transforms(Image.open(lr_path))
-        
-        gt_path=os.path.join(self.GT_root, name+".npy")
+        lr_path=os.path.join(self.LR_npy_path, name+".npy")
+        lr=np.load(lr_path)  
+        lr = self.LR_transforms(lr)
+
+        gt_path=os.path.join(self.GT_npy_path, name+".npy")
         gt=np.load(gt_path)  
         gt = self.GT_transforms(gt)
         
         if self.isTrain:
             return (lr,gt)
         else:
+            
             return (lr,gt,name)
 
     def __len__(self):
         return len(self.imgs_name)
     
-    def _fileList(self,path):
+    def _fileList_npy(self,path):
         ret_list=[]
         for root, dirs, files in os.walk(path):
             for name in files:
-                if name.endswith("png"):
+                if name.endswith(".npy"):
+                    name=name.rstrip(".npy")
                     ret_list.append(name)
         return ret_list
 

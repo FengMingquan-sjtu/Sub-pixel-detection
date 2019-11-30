@@ -49,22 +49,26 @@ temp_root="temp"
 output_root="output"
 
 valid_input_HR_path=os.path.join(data_root,input_root,"valid_input")
-valid_processed_HR_path=os.path.join(data_root,temp_root,"valid_processed_input")
-valid_GT_npy_path=os.path.join(data_root,temp_root,"valid_GT","npy")
-valid_GT_img_path=os.path.join(data_root,temp_root,"valid_GT","img")
+valid_GT_path=os.path.join(data_root,temp_root,"valid_GT")
+valid_GT_npy_path=os.path.join(valid_GT_path,"npy")
 valid_LR_path=os.path.join(data_root,temp_root,"valid_LR")
+valid_LR_npy_path=os.path.join(valid_LR_path,"npy")
 
 train_input_HR_path=os.path.join(data_root,input_root,"train_input")
-train_processed_HR_path=os.path.join(data_root,temp_root,"train_processed_input")
-train_GT_npy_path=os.path.join(data_root,temp_root,"train_GT","npy")
-train_GT_img_path=os.path.join(data_root,temp_root,"train_GT","img")
+train_GT_path=os.path.join(data_root,temp_root,"train_GT")
+train_GT_npy_path=os.path.join(train_GT_path,"npy")
 train_LR_path=os.path.join(data_root,temp_root,"train_LR")
+train_LR_npy_path=os.path.join(train_LR_path,"npy")
 
 test_input_HR_path=os.path.join(data_root,input_root,"test_input")
-test_processed_HR_path=os.path.join(data_root,temp_root,"test_processed_input")
-test_GT_npy_path=os.path.join(data_root,temp_root,"test_GT","npy")
-test_GT_img_path=os.path.join(data_root,temp_root,"test_GT","img")
+test_GT_path=os.path.join(data_root,temp_root,"test_GT")
+test_GT_npy_path=os.path.join(test_GT_path,"npy")
 test_LR_path=os.path.join(data_root,temp_root,"test_LR")
+test_LR_npy_path=os.path.join(test_LR_path,"npy")
+
+
+
+test_LR_img_origin_path=os.path.join(test_LR_path,"img","origin")
 test_output_path=os.path.join(data_root,output_root,"test_output")
 
 baseline_output_path=os.path.join(data_root,output_root,"baseline_output")
@@ -78,29 +82,31 @@ model_load_path=os.path.join(model_save_path,"epoch%d.pkl"%load_epoch_pkl)
 
 # -----end set parameters----------
 
-def data_preparation(input_HR_path,processed_HR_path,GT_img_path,GT_npy_path,LR_path):
-    data=DataPrepare(input_HR_path,processed_HR_path,GT_img_path,GT_npy_path,LR_path,scale_factor,detectors_order,detectors)
+def data_preparation(input_HR_path,GT_path,LR_path):
+    data=DataPrepare(input_HR_path,GT_path,LR_path,scale_factor,detectors_order,detectors,isVisualize)
     data.dataPrepare()
 
 
-def getDataLoader(LR_path,GT_npy_path,isTrain):
-    data = DriverDataset(LR_path,GT_npy_path,scale_factor,isTrain)
+def getDataLoader(LR_npy_path,GT_npy_path,isTrain):
+    data = DriverDataset(LR_npy_path,GT_npy_path,scale_factor,isTrain)
     dataloader = DataLoader(dataset=data,shuffle=True, batch_size=batch_size)
     return dataloader
 
 def model_summary(model):
-    summary(model, input_size=(3,HR_H,HR_W))
+    channels=3+detector_num
+    summary(model, input_size=(channels,HR_H,HR_W))
 
 def getModel():
     if model_name=="SPResNet":
-        return SPResNet(scale_factor=scale_factor,out_channels=detector_num,num_ResBlock=num_ResBlock,feature_size=feature_size)
+        channels=3+detector_num
+        return SPResNet(scale_factor=scale_factor,in_channels=channels,out_channels=channels,num_ResBlock=num_ResBlock,feature_size=feature_size)
     else:
         raise NotImplementedError("model %s is not implemented"%model_name)
 
 
 def start_train():
-    train_dataloader=getDataLoader(train_LR_path,train_GT_npy_path,isTrain=True)
-    valid_dataloader=getDataLoader(valid_LR_path,valid_GT_npy_path,isTrain=True)
+    train_dataloader=getDataLoader(train_LR_npy_path,train_GT_npy_path,isTrain=True)
+    valid_dataloader=getDataLoader(valid_LR_npy_path,valid_GT_npy_path,isTrain=True)
     model=getModel()
     loss_func = F.mse_loss
     optimizer = optim.Adam(model.parameters())
@@ -122,7 +128,7 @@ def loadModel():
 def start_test():
     print("start testing.")
     test_model=loadModel()
-    test_dataloader=getDataLoader(test_LR_path,test_GT_npy_path,isTrain=False) # "None" means GT imgs are invisible to tester
+    test_dataloader=getDataLoader(test_LR_npy_path,test_GT_npy_path,isTrain=False)
     loss_func = F.mse_loss
     tester=Tester(test_model,test_dataloader,test_output_path,detectors_order,loss_func)
     
@@ -130,9 +136,9 @@ def start_test():
     print("finish testing.")
 
 def start_visualize():
-    b=Baseline(test_LR_path,baseline_output_path,scale_factor,detectors_order)
+    b=Baseline(test_LR_img_origin_path,baseline_output_path,scale_factor,detectors_order)
     b.detect()
-    o=OutputVisualize(test_processed_HR_path,test_GT_img_path,test_output_path,baseline_output_path,visualize_output_path,threshold,detectors_order)
+    o=OutputVisualize(test_GT_path,test_output_path,baseline_output_path,visualize_output_path,threshold,detectors_order)
     o.visualize()
 
 
@@ -142,10 +148,10 @@ def start_visualize():
 
 if __name__ == '__main__':
     if isPrepare:
-        data_preparation(valid_input_HR_path,valid_processed_HR_path,valid_GT_img_path,valid_GT_npy_path,valid_LR_path)
-        data_preparation(train_input_HR_path,train_processed_HR_path,train_GT_img_path,train_GT_npy_path,train_LR_path)
+        data_preparation(valid_input_HR_path,valid_GT_path,valid_LR_path)
+        data_preparation(train_input_HR_path,train_GT_path,train_LR_path)
     if isPrepare and isTest:
-        data_preparation(test_input_HR_path,test_processed_HR_path,test_GT_img_path,test_GT_npy_path,test_LR_path)
+        data_preparation(test_input_HR_path,test_GT_path,test_LR_path)
     
     if isSummary:
         model_summary(getModel())
