@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ### 2.2. prepare datasets
 
-Put train HR(High-Resolution) images in `./data/intput/train_input`, put validation HR images in `./data/input/valid_input`, and (optionally) put testing HR images in `./data/input/test_input`.   We already put some demo iamges in these folders.
+Put train HR(High-Resolution) images in `./data/intput/train_input`, put validation HR images in `./data/input/valid_input`, and (optionally) put testing HR images in `./data/input/test_input`.   We already put some demo images in these folders.
 
 ### 2.3. train and test
 
